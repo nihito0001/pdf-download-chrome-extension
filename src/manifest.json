@@ -1,22 +1,20 @@
 {
   "manifest_version": 3,
-  "name": "Chrome Extension with React & Webpack",
-  "description": "A chrome extension boilerplate built with React 17, Webpack 5, and Webpack Dev Server 4",
+  "name": "PDF Downloader",
+  "description": "A chrome extension to download pdfs",
+  "permissions": ["printing", "debugger", "downloads", "activeTab", "scripting"],
   "options_page": "options.html",
   "background": { "service_worker": "background.bundle.js" },
+  "host_permissions": ["https://stg.siim.jp/*"],
   "action": {
-    "default_popup": "popup.html",
-    "default_icon": "icon-34.png"
-  },
-  "chrome_url_overrides": {
-    "newtab": "newtab.html"
+    "default_title": "PDF Downloader"
   },
   "icons": {
     "128": "icon-128.png"
   },
   "content_scripts": [
     {
-      "matches": ["http://*/*", "https://*/*", "<all_urls>"],
+      "matches": ["https://stg.siim.jp/*"],
       "js": ["contentScript.bundle.js"],
       "css": ["content.styles.css"]
     }

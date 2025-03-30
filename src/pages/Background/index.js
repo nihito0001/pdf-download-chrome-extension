@@ -1,50 +1,39 @@
-chrome.action.onClicked.addListener((tab) => {
-  console.log('onClicked');
-  const debuggee = { tabId: tab.id };
+import { generatePDF } from './modules/pdfService';
+import {
+  getPresignedUrl,
+  uploadPDF,
+  generateKey,
+} from './modules/uploadService';
 
-  chrome.debugger.attach(debuggee, '1.3', () => {
-    chrome.debugger.sendCommand(debuggee, 'Page.enable', {}, () => {
-      chrome.debugger.sendCommand(
-        debuggee,
-        'Page.printToPDF',
-        {
-          printBackground: true,
-          paperWidth: 8.27, // A4 (210mm)
-          paperHeight: 11.7, // A4 (297mm)
-          marginTop: 0.5,
-          marginBottom: 0.5,
-          marginLeft: 0.5,
-          marginRight: 0.5,
-          scale: 1,
-          landscape: false,
-        },
-        ({ data }) => {
-          const binaryPDF = atob(data);
-          const len = binaryPDF.length;
-          const buffer = new Uint8Array(len);
-          for (let i = 0; i < len; ++i) {
-            buffer[i] = binaryPDF.charCodeAt(i);
-          }
-          const blob = new Blob([buffer], { type: 'application/pdf' });
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('onMessage', request, sender, sendResponse);
 
-          console.log('blob', blob);
+  if (request.action === 'uploadPdf') {
+    console.log('uploadPdf');
+    const debuggee = { tabId: sender.tab.id };
 
-          // PDFをアップロード
-          //   const reader = new FileReader();
-          //   reader.onloadend = () => {
-          //     const base64Data = reader.result.split(',')[1];
-          //     chrome.downloads.download({
-          //       url: `data:application/pdf;base64,${base64Data}`,
-          //       filename: 'page.pdf',
-          //       saveAs: true,
-          //     });
-          //   };
-          //   reader.readAsDataURL(blob);
+    chrome.debugger.attach(debuggee, '1.3', async () => {
+      try {
+        const pdfBlob = await generatePDF(debuggee);
+        const key = generateKey();
+        const putObjectUrl = await getPresignedUrl(key);
 
-          // 終了処理
-          chrome.debugger.detach(debuggee);
+        if (!putObjectUrl) {
+          throw new Error('Failed to get presigned URL');
         }
-      );
+
+        const response = await uploadPDF(putObjectUrl, pdfBlob);
+        console.log('Upload response:', response);
+
+        sendResponse({ success: true });
+      } catch (error) {
+        console.error('Error:', error);
+        sendResponse({ success: false });
+      } finally {
+        chrome.debugger.detach(debuggee);
+      }
     });
-  });
+
+    return true;
+  }
 });
